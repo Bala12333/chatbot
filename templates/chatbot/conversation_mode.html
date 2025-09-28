@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversational Speech Mode - Crop Crystalline Chatbot</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .conversation-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .conversation-mode-btn {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            font-size: 60px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
+            margin: 20px 0;
+        }
+        
+        .conversation-mode-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 35px rgba(76, 175, 80, 0.4);
+        }
+        
+        .conversation-mode-btn.listening {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            animation: pulse 1.5s infinite;
+        }
+        
+        .conversation-mode-btn.processing {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            animation: spin 2s linear infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .status-display {
+            background: #f5f5f5;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            min-height: 100px;
+        }
+        
+        .conversation-transcript {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            max-height: 400px;
+            overflow-y: auto;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        
+        .transcript-entry {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        
+        .transcript-user {
+            background: #e3f2fd;
+            margin-left: 20px;
+        }
+        
+        .transcript-bot {
+            background: #f1f8e9;
+            margin-right: 20px;
+        }
+        
+        .language-selector {
+            margin: 20px 0;
+        }
+        
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .back-button:hover {
+            background: #1976D2;
+            color: white;
+            text-decoration: none;
+        }
+        
+        .instructions {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-button">
+        <i class="fas fa-arrow-left"></i>
+        Back to Chat
+    </a>
+
+    <div class="conversation-container">
+        <header class="header">
+            <h1><i class="fas fa-comments"></i> Conversational Speech Mode</h1>
+            <p>Hands-free agricultural assistance</p>
+        </header>
+
+        <div class="instructions">
+            <h3><i class="fas fa-info-circle"></i> How to Use</h3>
+            <p>1. Press the button below to start continuous conversation</p>
+            <p>2. Speak naturally in your native language - auto-detection enabled</p>
+            <p>3. The AI will respond with both text and voice in your language</p>
+            <p>4. Press the button again to stop the conversation</p>
+            <p>5. No need to press repeatedly - it's a continuous loop!</p>
+        </div>
+
+        <div class="language-selector">
+            <label for="conversation-language-select">
+                <i class="fas fa-globe"></i> Language:
+            </label>
+            <select id="conversation-language-select">
+                <option value="auto" selected>🌍 Auto-detect (Recommended)</option>
+                <option value="en-US">English</option>
+                <option value="hi-IN">हिन्दी (Hindi)</option>
+                <option value="te-IN">తెలుగు (Telugu)</option>
+                <option value="pa-IN">ਪੰਜਾਬੀ (Punjabi)</option>
+                <option value="ta-IN">தமிழ் (Tamil)</option>
+                <option value="bn-IN">বাংলা (Bengali)</option>
+                <option value="mr-IN">मराठी (Marathi)</option>
+                <option value="gu-IN">ગુજરાતી (Gujarati)</option>
+                <option value="kn-IN">ಕನ್ನಡ (Kannada)</option>
+                <option value="ml-IN">മലയാളം (Malayalam)</option>
+            </select>
+        </div>
+
+        <div class="status-display" id="status-display">
+            <h3 id="status-title">Ready to Listen</h3>
+            <p id="status-message">Press the button below to start your conversation</p>
+        </div>
+
+        <button id="conversation-btn" class="conversation-mode-btn" title="Press to speak">
+            <i class="fas fa-microphone"></i>
+        </button>
+
+        <div class="conversation-transcript" id="conversation-transcript">
+            <div class="transcript-entry transcript-bot">
+                <strong>🤖 Agricultural Assistant:</strong> Welcome to conversational mode! I'm ready to help with your farming questions. Press the microphone button and speak naturally in your preferred language.
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio element for playing responses -->
+    <audio id="conversation-audio" preload="none"></audio>
+
+    <script>
+        class ConversationalMode {
+            constructor() {
+                this.sessionId = null;
+                this.currentLanguage = 'auto';
+                this.isListening = false;
+                this.isProcessing = false;
+                this.isContinuousMode = false;
+                this.mediaRecorder = null;
+                this.audioChunks = [];
+                this.recordingTimeout = null;
+                this.silenceTimeout = null;
+                
+                this.initializeElements();
+                this.bindEvents();
+                this.updateStatus('Ready to Start', 'Press the button to begin continuous conversation');
+            }
+            
+            initializeElements() {
+                this.conversationBtn = document.getElementById('conversation-btn');
+                this.languageSelect = document.getElementById('conversation-language-select');
+                this.statusTitle = document.getElementById('status-title');
+                this.statusMessage = document.getElementById('status-message');
+                this.transcript = document.getElementById('conversation-transcript');
+                this.audio = document.getElementById('conversation-audio');
+            }
+            
+            bindEvents() {
+                this.conversationBtn.addEventListener('click', () => this.handleButtonClick());
+                this.languageSelect.addEventListener('change', (e) => {
+                    this.currentLanguage = e.target.value;
+                });
+            }
+            
+            async handleButtonClick() {
+                if (this.isProcessing) return;
+                
+                if (this.isContinuousMode) {
+                    this.stopContinuousMode();
+                } else {
+                    await this.startContinuousMode();
+                }
+            }
+            
+            async startContinuousMode() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            sampleRate: 48000
+                        } 
+                    });
+                    
+                    this.mediaRecorder = new MediaRecorder(stream, {
+                        mimeType: 'audio/webm;codecs=opus'
+                    });
+                    
+                    this.audioChunks = [];
+                    
+                    this.mediaRecorder.addEventListener('dataavailable', (event) => {
+                        if (event.data.size > 0) {
+                            this.audioChunks.push(event.data);
+                        }
+                    });
+                    
+                    this.mediaRecorder.addEventListener('stop', () => {
+                        this.processAudio();
+                    });
+                    
+                    this.mediaRecorder.start();
+                    this.isListening = true;
+                    this.isContinuousMode = true;
+                    this.conversationBtn.classList.add('listening');
+                    this.conversationBtn.innerHTML = '<i class="fas fa-stop"></i>';
+                    this.updateStatus('Continuous Mode Active', 'Speak naturally - I\'ll listen and respond automatically. Press button to stop.');
+                    
+                    // Auto-stop recording after 5 seconds of silence
+                    this.startSilenceDetection();
+                    
+                } catch (error) {
+                    console.error('Error starting continuous mode:', error);
+                    alert('Could not access microphone. Please check permissions.');
+                    this.updateStatus('Microphone Error', 'Please check your microphone permissions');
+                }
+            }
+            
+            startSilenceDetection() {
+                // Stop recording after 5 seconds of silence
+                this.silenceTimeout = setTimeout(() => {
+                    if (this.isListening && this.audioChunks.length > 0) {
+                        this.stopListening();
+                    }
+                }, 5000);
+            }
+            
+            stopListening() {
+                if (this.mediaRecorder && this.isListening) {
+                    clearTimeout(this.silenceTimeout);
+                    this.mediaRecorder.stop();
+                    this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                    this.isListening = false;
+                    this.isProcessing = true;
+                    this.conversationBtn.classList.remove('listening');
+                    this.conversationBtn.classList.add('processing');
+                    this.conversationBtn.innerHTML = '<i class="fas fa-cog"></i>';
+                    this.updateStatus('Processing...', 'Analyzing your question and preparing response...');
+                }
+            }
+            
+            stopContinuousMode() {
+                this.isContinuousMode = false;
+                clearTimeout(this.silenceTimeout);
+                if (this.mediaRecorder && this.isListening) {
+                    this.mediaRecorder.stop();
+                    this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                    this.isListening = false;
+                }
+                this.resetButton();
+                this.updateStatus('Continuous Mode Stopped', 'Press the button to start again');
+            }
+            
+            async processAudio() {
+                if (this.audioChunks.length === 0) {
+                    this.resetButton();
+                    return;
+                }
+                
+                try {
+                    const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm;codecs=opus' });
+                    const audioBase64 = await this.blobToBase64(audioBlob);
+                    
+                    const response = await fetch('/api/voice-chat/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            audio_data: audioBase64,
+                            session_id: this.sessionId,
+                            language_code: this.currentLanguage
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        this.sessionId = data.session_id;
+                        
+                        // Add user message to transcript
+                        if (data.transcribed_text) {
+                            this.addToTranscript('user', data.transcribed_text);
+                        }
+                        
+                        // Add bot response to transcript
+                        this.addToTranscript('bot', data.response);
+                        
+                        // Play audio response
+                        if (data.audio_response) {
+                            await this.playAudioResponse(data.audio_response);
+                        }
+                        
+                        // If in continuous mode, restart listening automatically
+                        if (this.isContinuousMode) {
+                            this.updateStatus('Continuous Mode Active', 'Listening for your next question...');
+                            setTimeout(() => {
+                                if (this.isContinuousMode) {
+                                    this.startContinuousMode();
+                                }
+                            }, 1000); // Wait 1 second before restarting
+                        } else {
+                            this.updateStatus('Ready for Next Question', 'Press the button to ask another question');
+                        }
+                    } else {
+                        throw new Error(data.error || 'Failed to process voice message');
+                    }
+                    
+                } catch (error) {
+                    console.error('Error processing audio:', error);
+                    this.addToTranscript('bot', 'Sorry, I couldn\'t process your voice message. Please try again.');
+                    this.updateStatus('Error', 'Please try speaking again');
+                } finally {
+                    this.resetButton();
+                }
+            }
+            
+            resetButton() {
+                this.isProcessing = false;
+                this.conversationBtn.classList.remove('listening', 'processing');
+                this.conversationBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+                if (this.isContinuousMode) {
+                    this.updateStatus('Continuous Mode Active', 'Listening for your next question...');
+                } else {
+                    this.updateStatus('Ready to Start', 'Press the button to begin continuous conversation');
+                }
+            }
+            
+            addToTranscript(type, message) {
+                const entry = document.createElement('div');
+                entry.className = `transcript-entry transcript-${type}`;
+                
+                const icon = type === 'user' ? '👨‍🌾' : '🤖';
+                const label = type === 'user' ? 'You' : 'Agricultural Assistant';
+                
+                entry.innerHTML = `<strong>${icon} ${label}:</strong> ${message}`;
+                
+                this.transcript.appendChild(entry);
+                this.transcript.scrollTop = this.transcript.scrollHeight;
+            }
+            
+            async playAudioResponse(audioBase64) {
+                try {
+                    const audioBlob = this.base64ToBlob(audioBase64, 'audio/mp3');
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    this.audio.src = audioUrl;
+                    
+                    this.updateStatus('Playing Response...', 'Listen to the agricultural advice');
+                    
+                    await new Promise((resolve, reject) => {
+                        this.audio.onended = () => {
+                            URL.revokeObjectURL(audioUrl);
+                            resolve();
+                        };
+                        this.audio.onerror = reject;
+                        this.audio.play();
+                    });
+                    
+                } catch (error) {
+                    console.error('Error playing audio response:', error);
+                }
+            }
+            
+            updateStatus(title, message) {
+                this.statusTitle.textContent = title;
+                this.statusMessage.textContent = message;
+            }
+            
+            blobToBase64(blob) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const base64 = reader.result.split(',')[1];
+                        resolve(base64);
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            }
+            
+            base64ToBlob(base64, mimeType) {
+                const byteCharacters = atob(base64);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                return new Blob([byteArray], { type: mimeType });
+            }
+        }
+        
+        // Initialize conversational mode when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new ConversationalMode();
+        });
+    </script>
+</body>
+</html>

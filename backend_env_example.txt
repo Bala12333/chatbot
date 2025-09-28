@@ -1,0 +1,14 @@
+# Django settings
+SECRET_KEY=django-insecure-crop-chatbot-development-key-change-in-production
+DEBUG=True
+
+# Google Cloud credentials
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/google-cloud-key.json
+GOOGLE_CLOUD_PROJECT_ID=your-project-id
+
+# Dialogflow settings
+DIALOGFLOW_PROJECT_ID=your-dialogflow-project-id
+DIALOGFLOW_LANGUAGE_CODE=en-US
+
+# Gemini AI settings
+GEMINI_API_KEY=your-gemini-api-key-here
