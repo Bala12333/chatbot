@@ -50,45 +50,45 @@ class SpeechToTextService:
             Transcribed text string or None if transcription failed
         """
         try:
+            # Supported languages for detection
+            valid_language_codes = [
+                'en-US', 'hi-IN', 'te-IN', 'pa-IN', 'ta-IN', 'bn-IN', 'mr-IN', 'gu-IN', 'kn-IN', 'ml-IN'
+            ]
+
+            # If language_code is 'auto', set up for true auto-detection
+            if language_code == 'auto':
+                primary_language = 'en-US'  # Can be any from the list
+                alternative_language_codes = [code for code in valid_language_codes if code != primary_language]
+            elif language_code in valid_language_codes:
+                primary_language = language_code
+                alternative_language_codes = [code for code in valid_language_codes if code != primary_language]
+            else:
+                logger.warning(f"Invalid or missing language_code '{language_code}', defaulting to 'en-US'")
+                primary_language = 'en-US'
+                alternative_language_codes = [code for code in valid_language_codes if code != primary_language]
+
             # Create audio object from raw bytes for Google Cloud processing
             audio = speech.RecognitionAudio(content=audio_data)
-            
-            # Configure speech recognition settings for optimal Indian language support
+
+            # Configure speech recognition settings
             config = speech.RecognitionConfig(
-                # Audio format: WebM Opus (standard browser recording format)
                 encoding=speech.RecognitionConfig.AudioEncoding.WEBM_OPUS,
-                # Sample rate: 48kHz (high quality for clear transcription)
                 sample_rate_hertz=48000,
-                # Primary language for transcription
-                language_code=language_code,
-                # Alternative languages for automatic detection (Indian languages)
-                alternative_language_codes=[
-                    'hi-IN',  # Hindi (India)
-                    'te-IN',  # Telugu (India)
-                    'pa-IN',  # Punjabi (India)
-                    'ta-IN',  # Tamil (India)
-                    'bn-IN',  # Bengali (India)
-                    'mr-IN',  # Marathi (India)
-                    'gu-IN',  # Gujarati (India)
-                    'kn-IN',  # Kannada (India)
-                    'ml-IN'   # Malayalam (India)
-                ],
-                # Automatically add punctuation for better readability
+                language_code=primary_language,
+                alternative_language_codes=alternative_language_codes,
                 enable_automatic_punctuation=True,
             )
-            
-            # Send audio to Google Cloud Speech-to-Text API for processing
+
+            # Log config for debugging
+            logger.debug(f"Speech-to-text config: {config}")
+
             response = self.client.recognize(config=config, audio=audio)
-            
-            # Extract the best transcription result if available
             if response.results:
-                # Return the most confident transcription alternative
                 return response.results[0].alternatives[0].transcript
-            return None  # No speech detected or transcription failed
-            
+            return None
         except Exception as e:
-            # Log any errors for debugging and monitoring
             logger.error(f"Speech-to-text error: {e}")
+            logger.error(f"Audio length: {len(audio_data) if audio_data else 0}")
             return None
 
 
@@ -122,40 +122,55 @@ class TextToSpeechService:
             MP3 audio bytes for playback or None if synthesis failed
         """
         try:
+            # Validate language_code
+            valid_language_codes = [
+                'en-US', 'hi-IN', 'te-IN', 'pa-IN', 'ta-IN', 'bn-IN', 'mr-IN', 'gu-IN', 'kn-IN', 'ml-IN'
+            ]
+            if not language_code or language_code not in valid_language_codes:
+                logger.warning(f"Invalid or missing language_code '{language_code}', defaulting to 'en-US'")
+                language_code = 'en-US'
+
             # Prepare text input for Google Cloud Text-to-Speech processing
             synthesis_input = texttospeech.SynthesisInput(text=text)
-            
-            # Configure voice characteristics for natural farmer communication
+
+            # Set a default voice name for each language (optional, but avoids empty voice errors)
+            default_voice_names = {
+                'en-US': 'en-US-Wavenet-D',
+                'hi-IN': 'hi-IN-Wavenet-A',
+                'te-IN': 'te-IN-Wavenet-A',
+                'pa-IN': 'pa-IN-Wavenet-A',
+                'ta-IN': 'ta-IN-Wavenet-A',
+                'bn-IN': 'bn-IN-Wavenet-A',
+                'mr-IN': 'mr-IN-Wavenet-A',
+                'gu-IN': 'gu-IN-Wavenet-A',
+                'kn-IN': 'kn-IN-Wavenet-A',
+                'ml-IN': 'ml-IN-Wavenet-A',
+            }
+            voice_name = default_voice_names.get(language_code, '')
+
             voice = texttospeech.VoiceSelectionParams(
-                # Use the same language as detected from user input
                 language_code=language_code,
-                # Male voice preference (often preferred for agricultural advice)
+                name=voice_name,
                 ssml_gender=texttospeech.SsmlVoiceGender.MALE,
             )
-            
-            # Configure audio output settings for optimal quality
+
             audio_config = texttospeech.AudioConfig(
-                # MP3 format for good quality and compatibility
                 audio_encoding=texttospeech.AudioEncoding.MP3,
-                # Normal speaking rate (1.0 = natural speed)
                 speaking_rate=1.0,
-                # Natural pitch (0.0 = default, comfortable for farmers)
                 pitch=0.0,
             )
-            
-            # Send text to Google Cloud Text-to-Speech API for voice generation
+
+            logger.debug(f"Text-to-speech config: language_code={language_code}, voice_name={voice_name}")
+
             response = self.client.synthesize_speech(
-                input=synthesis_input, 
-                voice=voice, 
+                input=synthesis_input,
+                voice=voice,
                 audio_config=audio_config
             )
-            
-            # Return the generated audio content as bytes
             return response.audio_content
-            
         except Exception as e:
-            # Log any errors for debugging and monitoring
             logger.error(f"Text-to-speech error: {e}")
+            logger.error(f"Text: {text}, Language: {language_code}")
             return None
 
 
