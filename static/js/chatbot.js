@@ -117,8 +117,7 @@ class CropChatbot {
     }
 
     updateWelcomeMessage() {
-        updateWelcomeMessage() {
-            const welcomeMessages = {
+        const welcomeMessages = {
                 'en-US': {
                     greeting: "Hello! I'm your agricultural assistant. I can help you with:",
                     features: [
@@ -231,19 +230,19 @@ class CropChatbot {
                 }
             };
 
-            const messages = welcomeMessages[this.currentLanguage] || welcomeMessages['en-US'];
-            const welcomeElement = document.querySelector('.welcome-message .message-content');
+        const messages = welcomeMessages[this.currentLanguage] || welcomeMessages['en-US'];
+        const welcomeElement = document.querySelector('.welcome-message .message-content');
 
-            if (welcomeElement) {
-                welcomeElement.innerHTML = `
+        if (welcomeElement) {
+            welcomeElement.innerHTML = `
                 <p>${messages.greeting}</p>
                 <ul>
                     ${messages.features.map(feature => `<li>${feature}</li>`).join('')}
                 </ul>
                 <p>${messages.instruction}</p>
             `;
-            }
         }
+    }
     
     async sendMessage() {
             const message = this.messageInput.value.trim();
@@ -259,6 +258,10 @@ class CropChatbot {
             this.updateStatus('Processing...');
 
             try {
+                // Add timeout to prevent hanging requests
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
                 const response = await fetch('/api/chat/', {
                     method: 'POST',
                     headers: {
@@ -268,8 +271,11 @@ class CropChatbot {
                         message: message,
                         session_id: this.sessionId,
                         language_code: 'auto'  // Always use auto-detection
-                    })
+                    }),
+                    signal: controller.signal
                 });
+
+                clearTimeout(timeoutId); // Clear timeout if request completes
 
                 const data = await response.json();
 
@@ -287,12 +293,26 @@ class CropChatbot {
 
             } catch (error) {
                 console.error('Error sending message:', error);
-                this.addMessage('bot', 'Sorry, I encountered an error. Please try again.', {
+                
+                let errorMessage = 'Sorry, I encountered an error. Please try again.';
+                if (error.name === 'AbortError') {
+                    errorMessage = 'Request timed out. Please check your connection and try again.';
+                    this.updateStatus('Timeout Error', 'error');
+                } else if (error.message.includes('Failed to fetch')) {
+                    errorMessage = 'Connection error. Please check if the server is running and try again.';
+                    this.updateStatus('Connection Error', 'error');
+                } else {
+                    this.updateStatus('Error', 'error');
+                }
+                
+                this.addMessage('bot', errorMessage, {
                     isError: true
                 });
-                this.updateStatus('Error', 'error');
             } finally {
+                // Ensure loading is always hidden, even if there's an error
+                console.log('Finally block: hiding loading overlay');
                 this.showLoading(false);
+                this.hideLoading(); // Double-check to make sure it's hidden
             }
         }
     
@@ -707,11 +727,20 @@ class CropChatbot {
         showLoading(show) {
             console.log('showLoading called with:', show);
             if (this.loadingOverlay) {
-                this.loadingOverlay.style.display = show ? 'flex' : 'none';
-                console.log('Loading overlay display set to:', this.loadingOverlay.style.display);
+                if (show) {
+                    this.loadingOverlay.classList.add('active');
+                } else {
+                    this.loadingOverlay.classList.remove('active');
+                }
+                console.log('Loading overlay active class:', this.loadingOverlay.classList.contains('active'));
             } else {
                 console.error('Loading overlay element not found!');
             }
+        }
+
+        hideLoading() {
+            console.log('hideLoading called');
+            this.showLoading(false);
         }
 
         updateStatus(text, type = 'ready') {
